@@ -10,6 +10,12 @@ import json
 import re
 import os
 
+debug = True
+
+yellow = "\033[33m"
+normal = "\033[0;33;0m"
+grey = "\033[90m"
+
 try:
     columns, rows = os.get_terminal_size(0)
 except OSError:
@@ -18,12 +24,12 @@ except OSError:
 def help():
     print("Sonos")
     print("sonos cmd [args]")
-    print("args := (i)nfo, (n)ext, (pr)evious, (pl)ay, (p)ause, (s)huffle, (v)olume [0-100], (q)ueue [index], (r)andom, (r)e(m)ove, playlist/add, (l)yrics")
+    print("args := (i)nfo, (n)ext, (pr)evious, (pl)ay, (p)ause, (s)huffle, (v)olume [0-100], (q)ueue [index], (r)andom, (r)e(m)ove, playlist/add, (l)yrics [restart?], (s)ee(k)")
 
 
 def info():
     track = sonos.get_current_track_info()
-    print (int(track["playlist_position"]) - 1, "\033[33m" + track["title"]+"\033[0;33;0m", "-", track["artist"], "", "(",track["album"],")")
+    print (int(track["playlist_position"]) - 1, yellow + track["title"]+normal, "-", track["artist"], "", "(",track["album"],")")
 
 def queue():
     track = sonos.get_current_track_info()
@@ -44,7 +50,7 @@ def queue():
         if hasattr(track, 'creator'):
             creator = track.creator
         if i == index:
-            print("\033[90m" + "-"*columns + "\033[0;33;0m")
+            print(grey + "-"*columns + normal)
             track = sonos.get_current_track_info()
             pos = track["position"].split(":")
             dur = track["duration"].split(":")
@@ -53,17 +59,17 @@ def queue():
             # bar_len = 147
             bar_len = columns - 34
             w = int(bar_len*pos/dur)
-            print (int(track["playlist_position"]) - 1, "\033[33m" + track["title"]+"\033[0;33;0m", track["artist"], "", "(",track["album"],")")
+            print (int(track["playlist_position"]) - 1, yellow + track["title"]+normal, track["artist"], "", grey+"(",track["album"],")"+normal)
             print("Volume:", str(sonos.volume).rjust(3) + "%", "|", track["position"], "["+("="*w)+">" + " "*(bar_len-w)+"]", track["duration"])
-            print("\033[90m" + "-"*columns + "\033[0;33;0m")
+            print(grey + "-"*columns + normal)
         else:
-            print (str(i).ljust(maxlen), "\033[90m"+title+"\033[0;33;0m", creator)
+            print (str(i).ljust(maxlen), grey+title+normal, creator)
         i += 1
 
 def children(json):
     t = type(json)
     if type(json) is str:
-        return json+"\n"
+        return json
     elif t is list:
         s = ""
         for i in json:
@@ -76,13 +82,20 @@ def children(json):
         for key, value in json.items():
             if key == "children":
                 s += children(value)
+            elif key == "tag" and value == "br":
+                s += "\n"
         return s
     return ""
 
-def print_lyrics(json):
-    # pprint(json)
-    json = json["dom"]["children"]
-    for d in json:
+def print_lyrics(jsn):
+
+    if debug:
+        with open("lyrics.json", "w") as f:
+            f.write(json.dumps(jsn))
+            f.close()
+
+    jsn = jsn["dom"]["children"]
+    for d in jsn:
         print(children(d))
 
 if __name__ == '__main__':
@@ -184,7 +197,11 @@ if __name__ == '__main__':
             plists = list(sonos.get_sonos_playlists())
             for plist in plists:
                 print(plist.title)
+
     elif cmd == "lyrics" or cmd == "l":
+
+        if len(sys.argv) > 2:
+            sonos.seek("00:00:00")
 
         track = sonos.get_current_track_info()
         artist = re.sub("\(.*?\)|\[.*?\]|", "", track["artist"])
@@ -217,8 +234,15 @@ if __name__ == '__main__':
             "X-Genius-iOS-Version":"5.5.1"
         })
         print()
-        print("\033[33m"+json.loads(res.content)["response"]["song"]["full_title"]+"\033[0;33;0m")
+        print(yellow+json.loads(res.content)["response"]["song"]["full_title"]+normal)
         print()
         print_lyrics(json.loads(res.content)["response"]["song"]["lyrics"])
+
+    elif cmd == "seek" or cmd == "sk":
+        if len(sys.argv) == 3:
+            sonos.seek(sys.argv[2])
+            queue()
+        else:
+            print("use HH:MM:SS")
     else:
         queue()
