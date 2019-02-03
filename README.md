@@ -22,4 +22,5 @@ The project uses SoCo and Requests.
 | random   | r        |                    | play a random song from the queue                                              |
 | remove   | rm       | id (optional)      | Remove current song from the queue or use id to remove any song from the queue |
 | playlist | add      | name               | Add current song to playlist specified with name parameter.                    |
-| lyrics   | l        |                    | Show lyrics for current song                                                   |
+| lyrics   | l        | restart            | Show lyrics for current song. And use restart to restart the song.             |
+| seek     | sk       |                    | Set seeker position. Format: HH:mm:ss                                          |
